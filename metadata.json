@@ -1,0 +1,6 @@
+{
+  "name": "Kochbuch & Koch-Tracker",
+  "description": "Persönlicher und gemeinsamer Koch-Tracker mit Kalender, Rezepten und XP-Belohnungssystem.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
