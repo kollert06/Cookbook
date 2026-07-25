@@ -79,7 +79,7 @@ export class StorageService {
   static async getCurrentUser(): Promise<User | null> {
     const userId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
     if (!userId) return null;
-    const { data } = await supabase.from('users').select('*').eq('id', userId).single();
+    const { data } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
     if (!data) return null;
     return mapUser(data);
   }
@@ -89,7 +89,7 @@ export class StorageService {
   }
 
   static async registerUser(username: string, email?: string): Promise<User> {
-    const { data: existing } = await supabase.from('users').select('*').ilike('username', username).single();
+    const { data: existing } = await supabase.from('users').select('*').ilike('username', username).maybeSingle();
     if (existing) {
       return mapUser(existing);
     }
@@ -298,7 +298,7 @@ export class StorageService {
     const { data: cb } = await supabase.from('shared_cookbooks')
       .select('*')
       .ilike('invite_code', code.trim())
-      .single();
+      .maybeSingle();
 
     if (!cb) return null;
 
