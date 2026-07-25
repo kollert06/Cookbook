@@ -15,7 +15,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onOpenCookLogModal
 }) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#FDFCF8]/95 backdrop-blur-lg border-t border-[#E0D8CC] pb-safe pt-1.5 px-3">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#FDFCF8]/95 backdrop-blur-lg border-t border-[#E0D8CC] pt-1.5 px-3" style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom, 0px))' }}>
       <div className="max-w-md mx-auto flex items-center justify-between">
         
         {/* Calendar Tab */}
