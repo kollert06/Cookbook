@@ -40,7 +40,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   const userNameDisplay = isEndsWithS ? `${currentUser.username}'` : `${currentUser.username}s`;
 
   return (
-    <header className="sticky top-0 z-40 bg-[#FDFCF8]/95 backdrop-blur-md border-b border-[#E0D8CC] px-4 pb-3 transition-all" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}>
+    <header className="sticky top-0 z-40 bg-[#FDFCF8]/95 backdrop-blur-md border-b border-[#E0D8CC] px-4 pb-3 transition-all" style={{ paddingTop: 'max(1.25rem, calc(0.85rem + env(safe-area-inset-top, 0px)))' }}>
       <div className="max-w-md mx-auto flex items-center justify-between">
         
         {/* Brand Title */}
