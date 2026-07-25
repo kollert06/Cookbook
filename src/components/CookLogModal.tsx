@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Recipe, SharedCookbook, CookLog } from '../types';
 import { StorageService } from '../services/storage';
 import { HalfStarRating } from './HalfStarRating';
@@ -64,9 +64,22 @@ export const CookLogModal: React.FC<CookLogModalProps> = ({
   const [error, setError] = useState('');
 
   // Calculate live preview of XP
-  const currentUser = StorageService.getCurrentUser();
-  const logs = StorageService.getCookLogs();
-  const hasCookedBefore = selectedRecipeId !== 'custom' && logs.some(l => l.userId === currentUser.id && l.recipeId === selectedRecipeId);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [hasCookedBefore, setHasCookedBefore] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      const user = await StorageService.getCurrentUser();
+      setCurrentUser(user);
+      if (user && selectedRecipeId !== 'custom') {
+        const logs = await StorageService.getCookLogs();
+        setHasCookedBefore(logs.some(l => l.userId === user.id && l.recipeId === selectedRecipeId));
+      } else {
+        setHasCookedBefore(false);
+      }
+    }
+    load();
+  }, [selectedRecipeId]);
 
   const baseXP = 10;
   const isComplete = photos.length > 0 && rating >= 0 && comment.trim().length > 0;

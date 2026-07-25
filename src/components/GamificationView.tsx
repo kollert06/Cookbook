@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { User } from '../types';
+import React, { useState, useEffect } from 'react';
+import { User, MilestoneBadge } from '../types';
 import { StorageService } from '../services/storage';
 import { AvatarFrame } from './AvatarFrame';
 import { AVATAR_FRAMES, calculateLevel, xpForNextLevel } from '../data/constants';
@@ -16,7 +16,10 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
 }) => {
   const currentLevel = calculateLevel(currentUser.xp);
   const xpInfo = xpForNextLevel(currentUser.xp);
-  const badges = StorageService.getMilestoneBadges(currentUser.id);
+  const [badges, setBadges] = useState<MilestoneBadge[]>([]);
+  useEffect(() => {
+    StorageService.getMilestoneBadges(currentUser.id).then(setBadges);
+  }, [currentUser.id]);
 
   const handleSelectFrame = (frameId: string) => {
     const frame = AVATAR_FRAMES.find(f => f.id === frameId);

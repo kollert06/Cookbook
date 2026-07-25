@@ -17,7 +17,7 @@ import { AuthModal } from './components/AuthModal';
 import { PWAInstallModal } from './components/PWAInstallModal';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<User>(() => StorageService.getCurrentUser());
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('calendar');
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -43,12 +43,14 @@ export default function App() {
   const [showPwaModal, setShowPwaModal] = useState(false);
 
   // Load state on mount / update
-  const refreshData = () => {
-    setRecipes(StorageService.getRecipes());
-    setCookLogs(StorageService.getCookLogs());
-    setSharedCookbooks(StorageService.getSharedCookbooks());
-    setAllUsers(StorageService.getUsers());
-    setCurrentUser(StorageService.getCurrentUser());
+  const refreshData = async () => {
+    setRecipes(await StorageService.getRecipes());
+    setCookLogs(await StorageService.getCookLogs());
+    setSharedCookbooks(await StorageService.getSharedCookbooks());
+    setAllUsers(await StorageService.getUsers());
+    const user = await StorageService.getCurrentUser();
+    setCurrentUser(user);
+    if (!user && !showAuthModal) setShowAuthModal(true);
   };
 
   useEffect(() => {
@@ -66,8 +68,8 @@ export default function App() {
     refreshData();
   };
 
-  const handleRecipeDeleted = (recipeId: string) => {
-    StorageService.deleteRecipe(recipeId);
+  const handleRecipeDeleted = async (recipeId: string) => {
+    await StorageService.deleteRecipe(recipeId);
     setSelectedRecipe(null);
     refreshData();
   };
@@ -88,10 +90,27 @@ export default function App() {
     });
   };
 
-  const handleDeleteCookLog = (logId: string) => {
-    StorageService.deleteCookLog(logId);
+  const handleDeleteCookLog = async (logId: string) => {
+    await StorageService.deleteCookLog(logId);
     refreshData();
   };
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-[100dvh] bg-[#FDFCF8] flex items-center justify-center">
+        {showAuthModal && (
+          <AuthModal
+            onClose={() => setShowAuthModal(false)}
+            onAuthenticated={(user) => {
+              setCurrentUser(user);
+              setShowAuthModal(false);
+              refreshData();
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[100dvh] bg-[#FDFCF8] text-[#2D3047] font-sans flex flex-col">

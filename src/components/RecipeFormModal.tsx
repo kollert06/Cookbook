@@ -82,22 +82,23 @@ export const RecipeFormModal: React.FC<RecipeFormModalProps> = ({
     setPhotos(photos.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       setError('Bitte gib einen Titel für das Rezept ein.');
       return;
     }
-
-    const saved = StorageService.saveRecipe({
+    
+    const user = await StorageService.getCurrentUser();
+    const saved = await StorageService.saveRecipe({
       id: recipeToEdit?.id,
-      userId: recipeToEdit?.userId || StorageService.getCurrentUser().id,
+      userId: recipeToEdit?.userId || (user ? user.id : ''),
       title: title.trim(),
       ingredients: ingredients.trim(),
       preparation: preparation.trim(),
       photos,
       sharedCookbookId: sharedCookbookId || null,
-      isPrivate: !sharedCookbookId
+      isPrivate: !sharedCookbookId,
     });
 
     onSaved(saved);

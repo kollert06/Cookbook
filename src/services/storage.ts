@@ -1,158 +1,177 @@
 import { User, Recipe, CookLog, SharedCookbook, XPTransaction, MilestoneBadge } from '../types';
-import { INITIAL_USERS, INITIAL_RECIPES, INITIAL_COOK_LOGS, INITIAL_SHARED_COOKBOOKS } from '../data/initialData';
 import { calculateLevel } from '../data/constants';
+import { supabase } from '../lib/supabase';
 
 const STORAGE_KEYS = {
-  USERS: 'kochbuch_users_v1',
   CURRENT_USER_ID: 'kochbuch_current_user_id_v1',
-  RECIPES: 'kochbuch_recipes_v1',
-  COOK_LOGS: 'kochbuch_cook_logs_v1',
-  SHARED_COOKBOOKS: 'kochbuch_shared_cookbooks_v1',
-  XP_TRANSACTIONS: 'kochbuch_xp_transactions_v1'
 };
 
-// Helper for local storage
-function getItem<T>(key: string, defaultValue: T): T {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : defaultValue;
-  } catch (e) {
-    console.error('Error reading localStorage', e);
-    return defaultValue;
-  }
+// Map database cases
+function mapUser(dbUser: any): User {
+  return {
+    id: dbUser.id,
+    username: dbUser.username,
+    email: dbUser.email,
+    avatarUrl: dbUser.avatar_url,
+    frameId: dbUser.frame_id,
+    xp: dbUser.xp,
+    level: dbUser.level,
+    createdAt: dbUser.created_at
+  };
 }
 
-function setItem<T>(key: string, value: T): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {
-    console.error('Error writing localStorage', e);
-  }
+function mapRecipe(dbRecipe: any): Recipe {
+  return {
+    id: dbRecipe.id,
+    userId: dbRecipe.user_id,
+    authorName: dbRecipe.author_name,
+    title: dbRecipe.title,
+    ingredients: dbRecipe.ingredients,
+    preparation: dbRecipe.preparation,
+    photos: dbRecipe.photos,
+    sharedCookbookId: dbRecipe.shared_cookbook_id,
+    isPrivate: dbRecipe.is_private,
+    timesCooked: dbRecipe.times_cooked,
+    createdAt: dbRecipe.created_at
+  };
+}
+
+function mapCookLog(dbLog: any): CookLog {
+  return {
+    id: dbLog.id,
+    userId: dbLog.user_id,
+    userName: dbLog.user_name,
+    userAvatar: dbLog.user_avatar,
+    recipeId: dbLog.recipe_id,
+    recipeTitle: dbLog.recipe_title,
+    date: dbLog.date,
+    photos: dbLog.photos,
+    rating: Number(dbLog.rating),
+    comment: dbLog.comment,
+    portions: dbLog.portions,
+    recipeText: dbLog.recipe_text,
+    sharedCookbookId: dbLog.shared_cookbook_id,
+    xpEarned: typeof dbLog.xp_earned === 'string' ? JSON.parse(dbLog.xp_earned) : dbLog.xp_earned,
+    createdAt: dbLog.created_at
+  };
+}
+
+function mapSharedCookbook(dbCb: any): SharedCookbook {
+  return {
+    id: dbCb.id,
+    name: dbCb.name,
+    description: dbCb.description,
+    ownerId: dbCb.owner_id,
+    memberIds: dbCb.member_ids,
+    inviteCode: dbCb.invite_code,
+    xp: dbCb.xp,
+    level: dbCb.level,
+    createdAt: dbCb.created_at
+  };
 }
 
 export class StorageService {
-  // Initialization
-  static init() {
-    if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
-      setItem(STORAGE_KEYS.USERS, INITIAL_USERS);
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) {
-      setItem(STORAGE_KEYS.CURRENT_USER_ID, 'usr_timo');
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.RECIPES)) {
-      setItem(STORAGE_KEYS.RECIPES, INITIAL_RECIPES);
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.COOK_LOGS)) {
-      setItem(STORAGE_KEYS.COOK_LOGS, INITIAL_COOK_LOGS);
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.SHARED_COOKBOOKS)) {
-      setItem(STORAGE_KEYS.SHARED_COOKBOOKS, INITIAL_SHARED_COOKBOOKS);
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.XP_TRANSACTIONS)) {
-      setItem(STORAGE_KEYS.XP_TRANSACTIONS, []);
-    }
+  static async getUsers(): Promise<User[]> {
+    const { data } = await supabase.from('users').select('*').order('created_at', { ascending: false });
+    return (data || []).map(mapUser);
   }
 
-  // Current active user
-  static getCurrentUser(): User {
-    this.init();
-    const users = this.getUsers();
-    const currentId = getItem<string>(STORAGE_KEYS.CURRENT_USER_ID, 'usr_timo');
-    const user = users.find(u => u.id === currentId);
-    return user || users[0] || INITIAL_USERS[0];
+  static async getCurrentUser(): Promise<User | null> {
+    const userId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
+    if (!userId) return null;
+    const { data } = await supabase.from('users').select('*').eq('id', userId).single();
+    if (!data) return null;
+    return mapUser(data);
   }
 
-  static setCurrentUser(userId: string): User {
-    this.init();
-    setItem(STORAGE_KEYS.CURRENT_USER_ID, userId);
-    return this.getCurrentUser();
+  static setCurrentUser(userId: string): void {
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, userId);
   }
 
-  // Users
-  static getUsers(): User[] {
-    this.init();
-    return getItem<User[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
-  }
-
-  static registerUser(username: string, email?: string): User {
-    const users = this.getUsers();
-    const existing = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+  static async registerUser(username: string, email?: string): Promise<User> {
+    const { data: existing } = await supabase.from('users').select('*').ilike('username', username).single();
     if (existing) {
-      return existing;
+      return mapUser(existing);
     }
-    const newUser: User = {
+    
+    const newUser = {
       id: `usr_${Date.now()}`,
       username,
-      email: email || undefined,
-      avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`,
-      frameId: 'none',
+      email: email || null,
+      avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`,
+      frame_id: 'none',
       xp: 0,
-      level: 1,
-      createdAt: new Date().toISOString().split('T')[0]
+      level: 1
     };
-    users.push(newUser);
-    setItem(STORAGE_KEYS.USERS, users);
-    setItem(STORAGE_KEYS.CURRENT_USER_ID, newUser.id);
-    return newUser;
+    
+    const { data } = await supabase.from('users').insert([newUser]).select().single();
+    const user = mapUser(data || newUser);
+    this.setCurrentUser(user.id);
+    return user;
   }
 
-  static updateUser(updatedUser: User): void {
-    const users = this.getUsers();
-    const index = users.findIndex(u => u.id === updatedUser.id);
-    if (index !== -1) {
-      users[index] = updatedUser;
-      setItem(STORAGE_KEYS.USERS, users);
-    }
+  static async updateUser(updatedUser: User): Promise<void> {
+    await supabase.from('users').update({
+      username: updatedUser.username,
+      email: updatedUser.email,
+      avatar_url: updatedUser.avatarUrl,
+      frame_id: updatedUser.frameId,
+      xp: updatedUser.xp,
+      level: updatedUser.level
+    }).eq('id', updatedUser.id);
   }
 
   // Recipes
-  static getRecipes(): Recipe[] {
-    this.init();
-    return getItem<Recipe[]>(STORAGE_KEYS.RECIPES, INITIAL_RECIPES);
+  static async getRecipes(): Promise<Recipe[]> {
+    const { data } = await supabase.from('recipes').select('*').order('created_at', { ascending: false });
+    return (data || []).map(mapRecipe);
   }
 
-  static saveRecipe(recipeData: Omit<Recipe, 'id' | 'createdAt' | 'timesCooked'> & { id?: string }): Recipe {
-    const recipes = this.getRecipes();
-    const currentUser = this.getCurrentUser();
+  static async saveRecipe(recipeData: Omit<Recipe, 'id' | 'createdAt' | 'timesCooked'> & { id?: string }): Promise<Recipe> {
+    const currentUser = await this.getCurrentUser();
+    if (!currentUser) throw new Error("No user");
 
     if (recipeData.id) {
-      const idx = recipes.findIndex(r => r.id === recipeData.id);
-      if (idx !== -1) {
-        recipes[idx] = {
-          ...recipes[idx],
-          ...recipeData,
-          authorName: recipeData.authorName || currentUser.username
-        };
-        setItem(STORAGE_KEYS.RECIPES, recipes);
-        return recipes[idx];
-      }
+      const { data } = await supabase.from('recipes').update({
+        title: recipeData.title,
+        ingredients: recipeData.ingredients,
+        preparation: recipeData.preparation,
+        photos: recipeData.photos,
+        shared_cookbook_id: recipeData.sharedCookbookId || null,
+        is_private: recipeData.isPrivate,
+        author_name: recipeData.authorName || currentUser.username
+      }).eq('id', recipeData.id).select().single();
+      return mapRecipe(data);
     }
 
-    const newRecipe: Recipe = {
-      ...recipeData,
+    const newRecipe = {
       id: `rec_${Date.now()}`,
-      userId: currentUser.id,
-      authorName: currentUser.username,
-      createdAt: new Date().toISOString().split('T')[0],
-      timesCooked: 0
+      user_id: currentUser.id,
+      author_name: currentUser.username,
+      title: recipeData.title,
+      ingredients: recipeData.ingredients,
+      preparation: recipeData.preparation,
+      photos: recipeData.photos || [],
+      shared_cookbook_id: recipeData.sharedCookbookId || null,
+      is_private: recipeData.isPrivate,
+      times_cooked: 0
     };
-    recipes.unshift(newRecipe);
-    setItem(STORAGE_KEYS.RECIPES, recipes);
-    return newRecipe;
+
+    const { data } = await supabase.from('recipes').insert([newRecipe]).select().single();
+    return mapRecipe(data || newRecipe);
   }
 
-  static deleteRecipe(recipeId: string): void {
-    const recipes = this.getRecipes().filter(r => r.id !== recipeId);
-    setItem(STORAGE_KEYS.RECIPES, recipes);
+  static async deleteRecipe(recipeId: string): Promise<void> {
+    await supabase.from('recipes').delete().eq('id', recipeId);
   }
 
   // Cook Logs
-  static getCookLogs(): CookLog[] {
-    this.init();
-    return getItem<CookLog[]>(STORAGE_KEYS.COOK_LOGS, INITIAL_COOK_LOGS);
+  static async getCookLogs(): Promise<CookLog[]> {
+    const { data } = await supabase.from('cook_logs').select('*').order('created_at', { ascending: false });
+    return (data || []).map(mapCookLog);
   }
 
-  static createCookLog(data: {
+  static async createCookLog(data: {
     recipeId: string;
     recipeTitle: string;
     date: string;
@@ -162,131 +181,147 @@ export class StorageService {
     portions?: number;
     recipeText?: string;
     sharedCookbookId?: string | null;
-  }): { log: CookLog; xpBreakdown: { base: number; completeBonus: number; firstTimeBonus: number; total: number } } {
-    const logs = this.getCookLogs();
-    const currentUser = this.getCurrentUser();
-    const recipes = this.getRecipes();
-
+  }): Promise<{ log: CookLog; xpBreakdown: { base: number; completeBonus: number; firstTimeBonus: number; total: number } }> {
+    const currentUser = await this.getCurrentUser();
+    if (!currentUser) throw new Error("No current user");
+    
     // Check if first time recipe cooked by this user
-    const hasCookedBefore = logs.some(l => l.userId === currentUser.id && l.recipeId === data.recipeId);
+    const { data: previousLogs } = await supabase.from('cook_logs')
+      .select('id')
+      .eq('user_id', currentUser.id)
+      .eq('recipe_id', data.recipeId);
+      
+    const hasCookedBefore = previousLogs && previousLogs.length > 0;
 
-    // Calculate XP as per PDF Section 8
     const base = 10;
-    const isComplete = data.photos.length > 0 && data.rating > 0 && data.comment.trim().length > 0;
+    const isComplete = data.photos.length > 0 && data.rating >= 0 && data.comment.trim().length > 0;
     const completeBonus = isComplete ? 5 : 0;
-    const firstTimeBonus = !hasCookedBefore ? 15 : 0;
+    const firstTimeBonus = (!hasCookedBefore && data.recipeId !== 'custom') ? 15 : 0;
     const totalXP = base + completeBonus + firstTimeBonus;
-
     const xpEarned = { base, completeBonus, firstTimeBonus, total: totalXP };
 
-    const newLog: CookLog = {
+    const newLog = {
       id: `log_${Date.now()}`,
-      userId: currentUser.id,
-      userName: currentUser.username,
-      userAvatar: currentUser.avatarUrl,
-      recipeId: data.recipeId,
-      recipeTitle: data.recipeTitle,
+      user_id: currentUser.id,
+      user_name: currentUser.username,
+      user_avatar: currentUser.avatarUrl,
+      recipe_id: data.recipeId,
+      recipe_title: data.recipeTitle,
       date: data.date,
-      photos: data.photos,
+      photos: data.photos || [],
       rating: data.rating,
       comment: data.comment,
       portions: data.portions,
-      recipeText: data.recipeText,
-      sharedCookbookId: data.sharedCookbookId || null,
-      xpEarned,
-      createdAt: new Date().toISOString()
+      recipe_text: data.recipeText,
+      shared_cookbook_id: data.sharedCookbookId || null,
+      xp_earned: xpEarned
     };
 
-    logs.unshift(newLog);
-    setItem(STORAGE_KEYS.COOK_LOGS, logs);
-
-    // Update timesCooked on Recipe
-    const recipeIndex = recipes.findIndex(r => r.id === data.recipeId);
-    if (recipeIndex !== -1) {
-      recipes[recipeIndex].timesCooked = (recipes[recipeIndex].timesCooked || 0) + 1;
-      setItem(STORAGE_KEYS.RECIPES, recipes);
+    const { data: insertedLog } = await supabase.from('cook_logs').insert([newLog]).select().single();
+    
+    // Update times_cooked on Recipe if not custom
+    if (data.recipeId !== 'custom') {
+      const { data: recipe } = await supabase.from('recipes').select('times_cooked').eq('id', data.recipeId).single();
+      if (recipe) {
+        await supabase.from('recipes').update({ times_cooked: (recipe.times_cooked || 0) + 1 }).eq('id', data.recipeId);
+      }
     }
 
     // Award XP to User
     currentUser.xp += totalXP;
     currentUser.level = calculateLevel(currentUser.xp);
-    this.updateUser(currentUser);
+    await this.updateUser(currentUser);
 
     // If shared cookbook assigned, award XP to Shared Cookbook as well
     if (data.sharedCookbookId) {
-      const cookbooks = this.getSharedCookbooks();
-      const cbIdx = cookbooks.findIndex(c => c.id === data.sharedCookbookId);
-      if (cbIdx !== -1) {
-        cookbooks[cbIdx].xp += totalXP;
-        cookbooks[cbIdx].level = calculateLevel(cookbooks[cbIdx].xp);
-        setItem(STORAGE_KEYS.SHARED_COOKBOOKS, cookbooks);
+      const { data: cb } = await supabase.from('shared_cookbooks').select('xp, level').eq('id', data.sharedCookbookId).single();
+      if (cb) {
+        const newXp = cb.xp + totalXP;
+        const newLevel = calculateLevel(newXp);
+        await supabase.from('shared_cookbooks').update({ xp: newXp, level: newLevel }).eq('id', data.sharedCookbookId);
       }
     }
 
-    return { log: newLog, xpBreakdown: xpEarned };
+    return { log: mapCookLog(insertedLog || newLog), xpBreakdown: xpEarned };
   }
 
-  static updateCookLog(logId: string, updates: Partial<CookLog>): CookLog | null {
-    const logs = this.getCookLogs();
-    const idx = logs.findIndex(l => l.id === logId);
-    if (idx === -1) return null;
-    
-    logs[idx] = { ...logs[idx], ...updates };
-    setItem(STORAGE_KEYS.COOK_LOGS, logs);
-    return logs[idx];
+  static async updateCookLog(logId: string, updates: Partial<CookLog>): Promise<CookLog | null> {
+    const dbUpdates: any = {};
+    if (updates.recipeId !== undefined) dbUpdates.recipe_id = updates.recipeId;
+    if (updates.recipeTitle !== undefined) dbUpdates.recipe_title = updates.recipeTitle;
+    if (updates.date !== undefined) dbUpdates.date = updates.date;
+    if (updates.photos !== undefined) dbUpdates.photos = updates.photos;
+    if (updates.rating !== undefined) dbUpdates.rating = updates.rating;
+    if (updates.comment !== undefined) dbUpdates.comment = updates.comment;
+    if (updates.portions !== undefined) dbUpdates.portions = updates.portions;
+    if (updates.recipeText !== undefined) dbUpdates.recipe_text = updates.recipeText;
+    if (updates.sharedCookbookId !== undefined) dbUpdates.shared_cookbook_id = updates.sharedCookbookId;
+
+    const { data } = await supabase.from('cook_logs').update(dbUpdates).eq('id', logId).select().single();
+    if (!data) return null;
+    return mapCookLog(data);
   }
 
-  static deleteCookLog(logId: string): void {
-    const logs = this.getCookLogs().filter(l => l.id !== logId);
-    setItem(STORAGE_KEYS.COOK_LOGS, logs);
+  static async deleteCookLog(logId: string): Promise<void> {
+    await supabase.from('cook_logs').delete().eq('id', logId);
   }
 
   // Shared Cookbooks
-  static getSharedCookbooks(): SharedCookbook[] {
-    this.init();
-    return getItem<SharedCookbook[]>(STORAGE_KEYS.SHARED_COOKBOOKS, INITIAL_SHARED_COOKBOOKS);
+  static async getSharedCookbooks(): Promise<SharedCookbook[]> {
+    const { data } = await supabase.from('shared_cookbooks').select('*').order('created_at', { ascending: false });
+    return (data || []).map(mapSharedCookbook);
   }
 
-  static createSharedCookbook(name: string, description: string): SharedCookbook {
-    const cookbooks = this.getSharedCookbooks();
-    const currentUser = this.getCurrentUser();
-    const newCookbook: SharedCookbook = {
+  static async createSharedCookbook(name: string, description: string): Promise<SharedCookbook> {
+    const currentUser = await this.getCurrentUser();
+    if (!currentUser) throw new Error("No user");
+
+    const newCookbook = {
       id: `cb_${Date.now()}`,
       name,
       description,
-      ownerId: currentUser.id,
-      memberIds: [currentUser.id],
-      inviteCode: `KOCH-${Math.floor(1000 + Math.random() * 9000)}`,
+      owner_id: currentUser.id,
+      member_ids: [currentUser.id],
+      invite_code: `KOCH-${Math.floor(1000 + Math.random() * 9000)}`,
       xp: 0,
-      level: 1,
-      createdAt: new Date().toISOString().split('T')[0]
+      level: 1
     };
-    cookbooks.unshift(newCookbook);
-    setItem(STORAGE_KEYS.SHARED_COOKBOOKS, cookbooks);
-    return newCookbook;
+
+    const { data } = await supabase.from('shared_cookbooks').insert([newCookbook]).select().single();
+    return mapSharedCookbook(data || newCookbook);
   }
 
-  static joinSharedCookbookByCode(code: string): SharedCookbook | null {
-    const cookbooks = this.getSharedCookbooks();
-    const currentUser = this.getCurrentUser();
-    const cookbook = cookbooks.find(c => c.inviteCode.toUpperCase() === code.trim().toUpperCase());
-    if (!cookbook) return null;
+  static async joinSharedCookbookByCode(code: string): Promise<SharedCookbook | null> {
+    const currentUser = await this.getCurrentUser();
+    if (!currentUser) return null;
 
-    if (!cookbook.memberIds.includes(currentUser.id)) {
-      cookbook.memberIds.push(currentUser.id);
-      setItem(STORAGE_KEYS.SHARED_COOKBOOKS, cookbooks);
+    const { data: cb } = await supabase.from('shared_cookbooks')
+      .select('*')
+      .ilike('invite_code', code.trim())
+      .single();
+
+    if (!cb) return null;
+
+    const memberIds = cb.member_ids || [];
+    if (!memberIds.includes(currentUser.id)) {
+      memberIds.push(currentUser.id);
+      await supabase.from('shared_cookbooks').update({ member_ids: memberIds }).eq('id', cb.id);
+      cb.member_ids = memberIds;
     }
-    return cookbook;
+
+    return mapSharedCookbook(cb);
   }
 
   // Milestones / Badges calculation
-  static getMilestoneBadges(userId: string): MilestoneBadge[] {
-    const logs = this.getCookLogs().filter(l => l.userId === userId);
-    const recipes = this.getRecipes().filter(r => r.userId === userId);
-    const fiveStarLogs = logs.filter(l => l.rating === 5.0);
-
+  static async getMilestoneBadges(userId: string): Promise<MilestoneBadge[]> {
+    const { data: logsData } = await supabase.from('cook_logs').select('photos, rating').eq('user_id', userId);
+    const { count: recipeCount } = await supabase.from('recipes').select('id', { count: 'exact', head: true }).eq('user_id', userId);
+    
+    const logs = logsData || [];
+    const fiveStarLogs = logs.filter(l => Number(l.rating) === 5.0);
+    
     const logCount = logs.length;
-    const recipeCount = recipes.length;
+    const recipeCountNum = recipeCount || 0;
     const fiveStarCount = fiveStarLogs.length;
 
     return [
@@ -305,10 +340,10 @@ export class StorageService {
         title: 'Rezept-Sammler',
         description: 'Erstelle 5 eigene Rezepte',
         icon: '📖',
-        unlocked: recipeCount >= 5,
-        progress: Math.min(100, Math.round((recipeCount / 5) * 100)),
+        unlocked: recipeCountNum >= 5,
+        progress: Math.min(100, Math.round((recipeCountNum / 5) * 100)),
         target: 5,
-        current: recipeCount
+        current: recipeCountNum
       },
       {
         id: 'badge_5_stars',
@@ -325,10 +360,10 @@ export class StorageService {
         title: 'Foodie Fotograf',
         description: 'Erfasse 5 Kocheinträge inklusive Foto',
         icon: '📸',
-        unlocked: logs.filter(l => l.photos.length > 0).length >= 5,
-        progress: Math.min(100, Math.round((logs.filter(l => l.photos.length > 0).length / 5) * 100)),
+        unlocked: logs.filter(l => l.photos && l.photos.length > 0).length >= 5,
+        progress: Math.min(100, Math.round((logs.filter(l => l.photos && l.photos.length > 0).length / 5) * 100)),
         target: 5,
-        current: logs.filter(l => l.photos.length > 0).length
+        current: logs.filter(l => l.photos && l.photos.length > 0).length
       }
     ];
   }

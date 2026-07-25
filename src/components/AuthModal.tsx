@@ -30,17 +30,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     if (isRegister) {
-      const user = StorageService.registerUser(username.trim(), email.trim());
-      onAuthenticated(user);
+      StorageService.registerUser(username.trim(), email.trim()).then(user => {
+        onAuthenticated(user);
+      }).catch(err => {
+        setError(err.message || 'Registration failed');
+      });
     } else {
-      const users = StorageService.getUsers();
-      const user = users.find(u => u.username.toLowerCase() === username.trim().toLowerCase());
-      if (!user) {
-        setError('Benutzername nicht gefunden.');
-        return;
-      }
-      StorageService.setCurrentUser(user.id);
-      onAuthenticated(user);
+      StorageService.getUsers().then(users => {
+        const user = users.find(u => u.username.toLowerCase() === username.trim().toLowerCase());
+        if (!user) {
+          setError('Benutzername nicht gefunden.');
+          return;
+        }
+        StorageService.setCurrentUser(user.id);
+        onAuthenticated(user);
+      });
     }
   };
 

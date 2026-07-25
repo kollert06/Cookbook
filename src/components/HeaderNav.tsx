@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { StorageService } from '../services/storage';
 import { AvatarFrame } from './AvatarFrame';
@@ -21,7 +21,11 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onGoHome
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const users = StorageService.getUsers();
+  const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    StorageService.getUsers().then(setUsers);
+  }, []);
 
   const currentLevel = calculateLevel(currentUser.xp);
   const xpInfo = xpForNextLevel(currentUser.xp);
