@@ -89,7 +89,7 @@ export class StorageService {
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, userId);
   }
 
-  static async registerUser(username: string, email?: string): Promise<User> {
+  static async registerUser(username: string, displayName?: string, email?: string): Promise<User> {
     const { data: existing } = await supabase.from('users').select('*').ilike('username', username).maybeSingle();
     if (existing) {
       throw new Error('Benutzername bereits vergeben. Wähle einen anderen.');
@@ -98,7 +98,7 @@ export class StorageService {
     const newUser = {
       id: `usr_${Date.now()}`,
       username,
-      display_name: username,
+      display_name: displayName?.trim() || username,
       email: email || null,
       avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`,
       frame_id: 'none',
