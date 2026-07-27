@@ -11,6 +11,7 @@ function mapUser(dbUser: any): User {
   return {
     id: dbUser.id,
     username: dbUser.username,
+    displayName: dbUser.display_name || dbUser.username,
     email: dbUser.email,
     avatarUrl: dbUser.avatar_url,
     frameId: dbUser.frame_id,
@@ -44,7 +45,7 @@ function mapCookLog(dbLog: any): CookLog {
     userAvatar: dbLog.user_avatar,
     recipeId: dbLog.recipe_id,
     recipeTitle: dbLog.recipe_title,
-    date: dbLog.date,
+    date: dbLog.date ? dbLog.date.toString().substring(0, 10) : '',
     photos: dbLog.photos,
     rating: Number(dbLog.rating),
     comment: dbLog.comment,
@@ -91,12 +92,13 @@ export class StorageService {
   static async registerUser(username: string, email?: string): Promise<User> {
     const { data: existing } = await supabase.from('users').select('*').ilike('username', username).maybeSingle();
     if (existing) {
-      return mapUser(existing);
+      throw new Error('Benutzername bereits vergeben. Wähle einen anderen.');
     }
     
     const newUser = {
       id: `usr_${Date.now()}`,
       username,
+      display_name: username,
       email: email || null,
       avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`,
       frame_id: 'none',
@@ -104,21 +106,44 @@ export class StorageService {
       level: 1
     };
     
-    const { data } = await supabase.from('users').insert([newUser]).select().single();
+    let insertData;
+    const { data: d1, error: err1 } = await supabase.from('users').insert([newUser]).select().single();
+    if (err1 && err1.code === 'PGRST204') { // Column not found
+      // Fallback without display_name
+      const fallbackUser = { ...newUser };
+      delete fallbackUser.display_name;
+      const { data: d2, error: err2 } = await supabase.from('users').insert([fallbackUser]).select().single();
+      if (err2) throw err2;
+      insertData = d2;
+    } else if (err1) {
+      throw err1;
+    } else {
+      insertData = d1;
+    }
+    const data = insertData;
     const user = mapUser(data || newUser);
     this.setCurrentUser(user.id);
     return user;
   }
 
   static async updateUser(updatedUser: User): Promise<void> {
-    await supabase.from('users').update({
+    const updatePayload = {
       username: updatedUser.username,
+      display_name: updatedUser.displayName,
       email: updatedUser.email,
       avatar_url: updatedUser.avatarUrl,
       frame_id: updatedUser.frameId,
       xp: updatedUser.xp,
       level: updatedUser.level
-    }).eq('id', updatedUser.id);
+    };
+    const { error: err1 } = await supabase.from('users').update(updatePayload).eq('id', updatedUser.id);
+    if (err1 && err1.code === 'PGRST204') {
+      delete updatePayload.display_name;
+      const { error: err2 } = await supabase.from('users').update(updatePayload).eq('id', updatedUser.id);
+      if (err2) throw err2;
+    } else if (err1) {
+      throw err1;
+    }
   }
 
   // Recipes

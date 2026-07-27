@@ -42,13 +42,13 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
             <AvatarFrame
               avatarUrl={currentUser.avatarUrl}
               frameId={currentUser.frameId}
-              username={currentUser.username}
+              username={currentUser.displayName || currentUser.username}
               size="xl"
             />
           </div>
 
           <h2 className="font-serif italic font-extrabold text-2xl">
-            {currentUser.username}
+            {currentUser.displayName || currentUser.username}
           </h2>
           <div className="inline-flex items-center gap-1.5 bg-amber-400/20 border border-amber-300/40 px-3 py-1 rounded-full text-xs font-bold text-amber-200 my-2">
             <Trophy className="w-3.5 h-3.5 text-amber-300" />
@@ -108,7 +108,7 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
                   <AvatarFrame
                     avatarUrl={currentUser.avatarUrl}
                     frameId={frame.id}
-                    username={currentUser.username}
+                    username={currentUser.displayName || currentUser.username}
                     size="sm"
                     showBadge={false}
                   />

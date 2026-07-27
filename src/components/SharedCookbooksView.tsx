@@ -199,10 +199,10 @@ export const SharedCookbooksView: React.FC<SharedCookbooksViewProps> = ({
                       >
                         <img
                           src={m.avatarUrl}
-                          alt={m.username}
+                          alt={m.displayName || m.username}
                           className="w-5 h-5 rounded-full object-cover"
                         />
-                        <span className="font-semibold">{m.username}</span>
+                        <span className="font-semibold">{m.displayName || m.username}</span>
                         {m.id === cb.ownerId && (
                           <span className="text-[9px] bg-[#F2C94C] text-white px-1.5 rounded-md font-bold">
                             Gründer

@@ -13,6 +13,7 @@ import { RecipeModal } from './components/RecipeModal';
 import { RecipeFormModal } from './components/RecipeFormModal';
 import { CookLogModal } from './components/CookLogModal';
 import { XpRewardModal } from './components/XpRewardModal';
+import { ProfileEditModal } from './components/ProfileEditModal';
 import { AuthModal } from './components/AuthModal';
 import { PWAInstallModal } from './components/PWAInstallModal';
 
@@ -40,6 +41,7 @@ export default function App() {
   } | null>(null);
 
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showProfileEditModal, setShowProfileEditModal] = useState(false);
   const [showPwaModal, setShowPwaModal] = useState(false);
 
   // Load state on mount / update
@@ -98,7 +100,20 @@ export default function App() {
   if (!currentUser) {
     return (
       <div className="min-h-[100dvh] bg-[#FDFCF8] flex items-center justify-center">
-        {showAuthModal && (
+        
+      {showProfileEditModal && currentUser && (
+        <ProfileEditModal
+          currentUser={currentUser}
+          onClose={() => setShowProfileEditModal(false)}
+          onUpdate={(user) => {
+            setCurrentUser(user);
+            setShowProfileEditModal(false);
+            refreshData();
+          }}
+        />
+      )}
+
+      {showAuthModal && (
           <AuthModal
             onClose={() => setShowAuthModal(false)}
             onAuthenticated={(user) => {
@@ -122,6 +137,7 @@ export default function App() {
         onOpenPwaModal={() => setShowPwaModal(true)}
         onOpenAuthModal={() => setShowAuthModal(true)}
         onGoHome={() => setActiveTab('calendar')}
+          onOpenProfileEdit={() => setShowProfileEditModal(true)}
       />
 
       {/* Main View Container */}

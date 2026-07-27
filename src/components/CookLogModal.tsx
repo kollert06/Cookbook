@@ -3,6 +3,7 @@ import { Recipe, SharedCookbook, CookLog } from '../types';
 import { StorageService } from '../services/storage';
 import { HalfStarRating } from './HalfStarRating';
 import { X, Camera, Sparkles, Check, Image as ImageIcon, Flame } from 'lucide-react';
+import { getLocalDateString } from '../data/constants';
 
 interface CookLogModalProps {
   recipes: Recipe[];
@@ -28,7 +29,7 @@ export const CookLogModal: React.FC<CookLogModalProps> = ({
   onClose,
   onSaved
 }) => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   
   const [selectedRecipeId, setSelectedRecipeId] = useState<string>(
     cookLogToEdit ? cookLogToEdit.recipeId : (preselectedRecipeId || (recipes[0]?.id || 'custom'))
@@ -132,7 +133,7 @@ export const CookLogModal: React.FC<CookLogModalProps> = ({
     setPhotos(photos.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     let recipeTitle = '';
@@ -159,7 +160,7 @@ export const CookLogModal: React.FC<CookLogModalProps> = ({
     }
 
     if (cookLogToEdit) {
-      const updatedLog = StorageService.updateCookLog(cookLogToEdit.id, {
+      const updatedLog = await StorageService.updateCookLog(cookLogToEdit.id, {
         recipeId: rId,
         recipeTitle,
         date,
@@ -179,7 +180,7 @@ export const CookLogModal: React.FC<CookLogModalProps> = ({
       return;
     }
 
-    const result = StorageService.createCookLog({
+    const result = await StorageService.createCookLog({
       recipeId: rId,
       recipeTitle,
       date,

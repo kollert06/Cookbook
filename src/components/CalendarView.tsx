@@ -20,7 +20,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onEditCookLog,
   onDeleteCookLog
 }) => {
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 6, 1)); // Default July 2026
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [filterMode, setFilterMode] = useState<'all' | 'personal' | string>('all'); // 'all', 'personal', or sharedCookbookId
   const [selectedDayLog, setSelectedDayLog] = useState<CookLog | null>(null);
 
@@ -161,7 +161,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
             const dayLogs = logsByDate[dateStr] || [];
             const hasLog = dayLogs.length > 0;
-            const isToday = dateStr === new Date().toISOString().split('T')[0];
+            const isToday = dateStr === getLocalDateString();
 
             return (
               <button

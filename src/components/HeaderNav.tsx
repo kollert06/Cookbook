@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { StorageService } from '../services/storage';
 import { AvatarFrame } from './AvatarFrame';
-import { UtensilsCrossed, ChevronDown, Plus, Download, LogIn, UserPlus } from 'lucide-react';
+import { UtensilsCrossed, ChevronDown, Plus, Download, LogIn, UserPlus, Edit3 } from 'lucide-react';
 import { calculateLevel, xpForNextLevel } from '../data/constants';
 
 interface HeaderNavProps {
@@ -11,6 +11,7 @@ interface HeaderNavProps {
   onOpenPwaModal: () => void;
   onOpenAuthModal: () => void;
   onGoHome: () => void;
+  onOpenProfileEdit: () => void;
 }
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
@@ -18,7 +19,8 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onUserChange,
   onOpenPwaModal,
   onOpenAuthModal,
-  onGoHome
+  onGoHome,
+  onOpenProfileEdit
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
@@ -36,8 +38,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
     setDropdownOpen(false);
   };
 
-  const isEndsWithS = currentUser.username.toLowerCase().endsWith('s');
-  const userNameDisplay = isEndsWithS ? `${currentUser.username}'` : `${currentUser.username}s`;
+  const dName = currentUser.displayName || currentUser.username;
+  const isEndsWithS = dName.toLowerCase().endsWith('s');
+  const userNameDisplay = isEndsWithS ? `${currentUser.displayName || currentUser.username}'` : `${currentUser.displayName || currentUser.username}s`;
 
   return (
     <header className="sticky top-0 z-40 bg-[#FDFCF8]/95 backdrop-blur-md border-b border-[#E0D8CC] px-4 pb-3 transition-all" style={{ paddingTop: 'max(1.25rem, calc(0.85rem + env(safe-area-inset-top, 0px)))' }}>
@@ -82,13 +85,13 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               <AvatarFrame
                 avatarUrl={currentUser.avatarUrl}
                 frameId={currentUser.frameId}
-                username={currentUser.username}
+                username={currentUser.displayName || currentUser.username}
                 size="sm"
                 showBadge={false}
               />
               <div className="text-left hidden sm:block">
                 <span className="text-xs font-semibold text-[#2D3047] block leading-none">
-                  {currentUser.username}
+                  {currentUser.displayName || currentUser.username}
                 </span>
                 <span className="text-[10px] font-bold text-[#c05a38]">
                   Lvl {currentLevel}
@@ -103,12 +106,15 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             {/* Dropdown Menu */}
             {dropdownOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-[#E0D8CC] p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-3 py-2 border-b border-[#E0D8CC] mb-1">
+                <div className="px-3 py-2 border-b border-[#E0D8CC] mb-1 relative">
+                  <button onClick={() => { setDropdownOpen(false); onOpenProfileEdit(); }} className="absolute top-2 right-2 p-1.5 rounded-lg bg-[#F2EDE4] hover:bg-[#E0D8CC] text-[#2D3047] transition-colors" title="Profil bearbeiten">
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
                   <p className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">
                     Aktiver Nutzer
                   </p>
                   <p className="text-sm font-bold text-[#2D3047]">
-                    {currentUser.username} ({currentUser.xp} XP)
+                    {currentUser.displayName || currentUser.username} ({currentUser.xp} XP)
                   </p>
                   {/* XP Bar */}
                   <div className="w-full bg-[#E0D8CC] h-1.5 rounded-full mt-1.5 overflow-hidden">
@@ -138,11 +144,11 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                         <AvatarFrame
                           avatarUrl={u.avatarUrl}
                           frameId={u.frameId}
-                          username={u.username}
+                          username={u.displayName || u.username}
                           size="sm"
                           showBadge={false}
                         />
-                        <span className="text-xs">{u.username}</span>
+                        <span className="text-xs">{u.displayName || u.username}</span>
                       </div>
                       <span className="text-[10px] font-bold bg-[#E0D8CC] text-[#2D3047] px-1.5 py-0.5 rounded-md">
                         Lvl {calculateLevel(u.xp)}

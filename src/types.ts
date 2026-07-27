@@ -1,6 +1,7 @@
 export interface User {
   id: string;
   username: string;
+  displayName?: string;
   email?: string;
   avatarUrl: string;
   frameId: string; // e.g. 'none', 'bronze', 'silver', 'gold', 'chef_hat', 'gourmet_master'

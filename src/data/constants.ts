@@ -68,3 +68,10 @@ export function xpForNextLevel(xp: number): { currentXPInLevel: number; neededXP
   const percent = Math.min(100, Math.max(0, Math.round((currentXPInLevel / neededXP) * 100)));
   return { currentXPInLevel, neededXP, percent };
 }
+
+export function getLocalDateString(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
